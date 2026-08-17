@@ -107,6 +107,10 @@ button{font-family:inherit;cursor:pointer;}
 .setup-actions{margin-top:18px;display:flex;align-items:center;gap:18px;}
 #splitHint{font-size:13px;color:var(--muted);flex:1;}
 #splitHint b{color:var(--ink);font-weight:700;padding:0 2px;}
+/* 录入页底部服务来源声明 */
+.attribution{margin-top:28px;font-size:11px;line-height:2;color:var(--faint);}
+.attribution a{color:var(--muted);text-decoration:underline;text-underline-offset:2px;}
+.attribution a:hover{color:var(--ink-2);}
 
 /* ---- 按钮体系 ---- */
 .btn{
@@ -165,7 +169,7 @@ button{font-family:inherit;cursor:pointer;}
   color:var(--err);background:var(--err-bg);
   border-radius:3px;padding:0 2px;
 }
-/* 缺词插入标记（校对符号，表示此处应有一个词） */
+/* 缺词缺词标记（校对符号，表示此处应有一个词） */
 .gap{
   color:var(--err);font-weight:700;font-style:normal;
   background:var(--err-bg);border-radius:3px;padding:0 3px;margin:0 1px;
@@ -258,6 +262,8 @@ button{font-family:inherit;cursor:pointer;}
 .dict-li{display:flex;gap:8px;padding:2px 0;}
 .dict-pos{flex:none;font-family:var(--mono);font-size:11px;color:var(--faint);min-width:36px;padding-top:3px;}
 .dict-src{margin-top:12px;font-family:var(--mono);font-size:10.5px;color:var(--faint);}
+.dict-src a{color:inherit;text-decoration:underline;text-underline-offset:2px;}
+.dict-src a:hover{color:var(--ink-2);}
 /* 中文查询结果中的英文单词：点击转查 Free Dictionary API 英英释义 */
 .dict-w{
   color:var(--ink);font-weight:500;cursor:pointer;
@@ -378,6 +384,7 @@ button{font-family:inherit;cursor:pointer;}
       <button id="cancelEditBtn" class="btn" hidden>取消编辑</button>
       <button id="startBtn" class="btn primary">开始练习</button>
     </div>
+    <p class="attribution"><br>1.0.2 · 使用查词典功能时，可能调用 <a href="https://mymemory.translated.net/" target="_blank" rel="noopener">MyMemory 机器翻译</a>、<a href="https://freedictionaryapi.com/" target="_blank" rel="noopener">Free Dictionary API</a>（源自 <a href="https://en.wiktionary.org/" target="_blank" rel="noopener">维基词典</a>）提供查词服务。</p>
   </section>
 
   <!-- 练习视图 -->
@@ -410,7 +417,7 @@ button{font-family:inherit;cursor:pointer;}
       <p id="metaInfo"></p>
     </header>
     <div id="sentenceList"></div>
-    <p class="practice-tip">提示：选中中文或英文词句，点击浮标「查词典」查看释义，中文查询结果中的英文单词可点击查看英英释义；选中英文可<i>标红</i>记录错误，再点一次可取消；工具栏「插入标记」用于标注<i>缺词</i>位置（不参与拼接全文）；每句均可单独存入初稿 / 二稿 / 终稿，全部句子存满即等同整篇存档。</p>
+    <p class="practice-tip">提示：选中中文或英文词句，点击浮标「查词典」查看释义，中文查询结果中的英文单词可点击查看英英释义；选中英文可<i>标红</i>记录错误，再点一次可取消；工具栏「缺词标记」用于标注<i>缺词</i>位置（不参与拼接全文）。</p>
   </section>
 </main>
 
@@ -425,9 +432,9 @@ button{font-family:inherit;cursor:pointer;}
 
 <!-- 档位保存菜单 -->
 <div id="saveMenu">
-  <button type="button" class="save-opt" data-slot="draft"><span class="save-badge b-draft">初</span>存为初稿</button>
-  <button type="button" class="save-opt" data-slot="second"><span class="save-badge b-second">二</span>存为二稿</button>
-  <button type="button" class="save-opt" data-slot="final"><span class="save-badge b-final">终</span>存为终稿</button>
+  <button type="button" class="save-opt" data-slot="draft"><span class="save-badge b-draft">初</span>存入初稿</button>
+  <button type="button" class="save-opt" data-slot="second"><span class="save-badge b-second">二</span>存入二稿</button>
+  <button type="button" class="save-opt" data-slot="final"><span class="save-badge b-final">终</span>存入终稿</button>
 </div>
 
 <!-- 词典面板 -->
@@ -807,7 +814,7 @@ function renderSentences(a){
       '<button class="tbtn-copy" data-act="copy">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>复制本句' +
       '</button>' +
-      '<button class="tbtn" data-act="gap" title="在光标处插入缺词标记">插入标记</button>' +
+      '<button class="tbtn" data-act="gap" title="在光标处插入缺词标记">缺词标记</button>' +
       '<button class="tbtn" data-act="save" title="将本句当前内容存入某一档">保存本句</button>';
     tools.addEventListener('click', function(ev){
       var btn = ev.target.closest('[data-act]');
@@ -914,7 +921,7 @@ function markSelection(editor){
   var box = selectionIn(editor);
   if (!box) { toast('请先在本句中选中要标红的文字'); return; }
   if (box.sel.isCollapsed) { toast('请先选中要标红的文字'); return; }
-  if (selectionIntersectsGap(editor, box.range)) { toast('缺词标记自带标红，请调整选区避开'); return; }
+  if (selectionIntersectsGap(editor, box.range)) { toast('无法标红缺词标记'); return; }
   if (selectionAllMarked(editor, box.range)) { toast('已标红'); return; }
   try {
     var frag = box.range.extractContents();
@@ -971,7 +978,7 @@ function unwrapMarks(root){
 function unmarkSelection(editor){
   var box = selectionIn(editor);
   if (!box) { toast('请先在本句中操作'); return; }
-  if (selectionIntersectsGap(editor, box.range)) { toast('缺词标记不能取消标红，请调整选区避开'); return; }
+  if (selectionIntersectsGap(editor, box.range)) { toast('无法标红缺词标记'); return; }
   var marks = [];
   if (box.sel.isCollapsed){
     var node = box.range.startContainer;
@@ -997,7 +1004,7 @@ function unmarkSelection(editor){
 /* 在光标处插入缺词标记：句内无光标/选区时拒绝插入 */
 function insertGapMarker(editor){
   var box = selectionIn(editor);
-  if (!box){ toast('请先将光标放入本句，再插入标记'); return; }
+  if (!box){ toast('请先将光标放入本句缺词位置'); return; }
   editor.focus();
   var range = box.range.cloneRange();
   range.collapse(true);
@@ -1018,7 +1025,7 @@ function insertGapMarker(editor){
     onEditorInput(editor);
     toast('已插入缺词标记');
   } catch(e){
-    toast('无法在此处插入标记');
+    toast('无法在此处缺词标记');
   }
 }
 
@@ -1192,8 +1199,8 @@ function lookup(word){
     }, function(err){ giveUp(err, 'MyMemory'); });
   } else if (isSingleEnWord(word)){
     /* 英文单词：Free Dictionary API 英英释义（失败静默重试后再报错） */
-    lookupDev(word).then(function(html){
-      renderDict(html, '来源：Free Dictionary API（英英释义）');
+    lookupDev(word).then(function(res){
+      renderDict(res.html, '来源：Free Dictionary API（英英释义）' + wikiLinkInline(res.sourceUrls));
     }, function(err){ giveUp(err, 'Free Dictionary API'); });
   } else {
     /* 英文句段：机器翻译英译中 */
@@ -1282,8 +1289,16 @@ function fetchDevEntry(word, session, retries){
       if (!phon && Array.isArray(e0.phonetics)){
         e0.phonetics.forEach(function(p){ if (!phon && p && p.text) phon = p.text; });
       }
-      return { phon: phon, meanings: e0.meanings || [] };
+      return { phon: phon, meanings: e0.meanings || [], sourceUrls: e0.sourceUrls || [] };
     });
+}
+
+/* 从 Free Dictionary API 的 sourceUrls 生成内联 Wiktionary 出处链接（圆点分隔） */
+function wikiLinkInline(urls){
+  if (!Array.isArray(urls) || !urls.length) return '';
+  var u = String(urls[0] || '').trim();
+  if (!u) return '';
+  return ' · <a href="' + escapeHTML(u) + '" target="_blank" rel="noopener">查看词条</a>';
 }
 
 /* Free Dictionary API 接口：英文单词英英释义（失败静默重试后再报错） */
@@ -1298,7 +1313,7 @@ function lookupDev(word){
       });
     });
     html += '</div>';
-    return html;
+    return { html: html, sourceUrls: entry.sourceUrls };
   });
 }
 
@@ -1315,7 +1330,7 @@ function fillWordPOS(session, w){
     if (pos.length){
       ph.textContent = pos.slice(0, 3).join(' / ');
       var src = $('#dictBody .dict-src');
-      if (src) src.textContent = '来源：MyMemory 机器翻译 + Free Dictionary API';
+      if (src) src.innerHTML = '来源：MyMemory 机器翻译 + Free Dictionary API' + wikiLinkInline(entry.sourceUrls);
     }
   }).catch(function(){});
 }
