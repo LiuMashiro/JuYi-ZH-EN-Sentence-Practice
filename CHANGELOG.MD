@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [1.0.2]
+### Added
+- 查词源标记、版本号和WiKi词典词条链接
+
 ## [1.0.1]
 ### Added
 - 逐句保存，若需要保存错误版初稿，不需要一直保存错误直到全文翻译完毕再整篇保存，即可逐句保存、即时校对修正
