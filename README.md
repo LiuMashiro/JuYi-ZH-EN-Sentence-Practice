@@ -27,4 +27,4 @@
 - 数据完全本地存储。
 
 ## 说明
-  - 使用查词典功能时，可能调用[MyMemory 机器翻译](https://mymemory.translated.net/)、[Free Dictionary API](FreeDictionaryAPI.com)提供查词服务。
+  - 使用查词典功能时，可能调用[MyMemory 机器翻译](https://mymemory.translated.net/)、[Free Dictionary API](FreeDictionaryAPI.com)（源自[Wiktionary](https://en.wiktionary.org/)）提供查词服务。
