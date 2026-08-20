@@ -1,9 +1,13 @@
 # 句译 · 中译英翻译写作练习工具
 **JuYi-ZH-EN-Sentence-Practice**
 
-[在 GitHub Pages 中在线使用](https://liumashiro.github.io/JuYi-ZH-EN-Sentence-Practice/JuYi.html)
+
+<a href="https://liumashiro.github.io/JuYi-ZH-EN-Sentence-Practice/JuYi.html" target="_blank">
+  <img src="https://github.com/user-attachments/assets/ca434de2-d5ad-4c2b-ade9-65f1ce1cf59b" width="180" alt="JuYi" style="margin-right:12px;">
+</a>
 
 ---
+
 
 句译是一个专为英语学习者设计的单页应用。
 
