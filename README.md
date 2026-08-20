@@ -17,6 +17,8 @@
 - 下载 .html 文件，双击打开即可运行
 - 输入中文段落，拆句，翻译
 - 将逐句翻译结果或整篇翻译结果复制，交由 AI 进行批改优化。
+- 进阶（可选）使用Chrome app式窗口打开（独立窗口而非标签页，UI更清爽，使用更方便）：
+  - 在桌面右键添加快捷方式，输入`"C:\Program Files\Google\Chrome\Application\chrome.exe" --app=file:///{html位置}` ，如`"C:\Program Files\Google\Chrome\Application\chrome.exe" --app=file:///C:/Users/{Username}/Documents/JuYi.html`
 
 ## 功能
 - 智能分句：自动按标点符号将中文原文拆分为单句列表。
