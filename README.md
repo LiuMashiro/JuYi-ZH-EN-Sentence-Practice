@@ -1,7 +1,7 @@
 # 句译 · 中译英翻译写作练习工具
 **JuYi-ZH-EN-Sentence-Practice**
 
-**[在 GitHub Pages 中直接在线使用](https://liumashiro.github.io/JuYi-ZH-EN-Sentence-Practice/JuYi.html)**
+[在 GitHub Pages 中在线使用](https://liumashiro.github.io/JuYi-ZH-EN-Sentence-Practice/JuYi.html)
 
 ---
 
