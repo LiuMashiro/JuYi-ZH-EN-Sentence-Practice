@@ -16,7 +16,8 @@
 
 
 ## 快速开始
-- 下载 .html 文件，双击打开即可运行
+- [在 GitHub Pages 中在线使用](https://liumashiro.github.io/JuYi-ZH-EN-Sentence-Practice/JuYi.html)
+  - 或者，下载 .html 文件，双击打开即可运行
 - 输入中文段落，拆句，翻译
 - 将逐句翻译结果或整篇翻译结果复制，交由 AI 进行批改优化。
 - 进阶（可选）使用Chrome app式窗口打开（独立窗口而非标签页，UI更清爽，使用更方便）：
