@@ -27,7 +27,7 @@
   --shadow-md:0 6px 24px rgba(22,22,26,.07);
   --shadow-lg:0 24px 64px rgba(22,22,26,.16);
 }
-/* 触屏：禁用双击缩放但保留滚动与双击选词（WebKit 仅对命中元素自身生效，故用通配） */
+/* 触屏：禁用双击缩放但保留滚动与双击选词 */
 *{margin:0;padding:0;box-sizing:border-box;touch-action:manipulation;}
 html,body{height:100%;}
 body{
@@ -575,7 +575,7 @@ body.touch .sent.sel-zh .tbtn[data-act="dictsel"]{display:inline-block;}
       <button id="cancelEditBtn" class="btn" hidden>取消编辑</button>
       <button id="startBtn" class="btn primary">开始练习</button>
     </div>
-    <p class="attribution"><br>1.0.4 · 使用翻译 / 查词典功能时，可能调用 <a href="https://mymemory.translated.net/" target="_blank" rel="noopener">MyMemory 机器翻译</a>、<a href="https://freedictionaryapi.com/" target="_blank" rel="noopener">Free Dictionary API</a>（源自 <a href="https://en.wiktionary.org/" target="_blank" rel="noopener">维基词典</a>）提供查词服务。</p>
+    <p class="attribution"><br>1.0.5 · 使用翻译 / 查词典功能时，可能调用 <a href="https://mymemory.translated.net/" target="_blank" rel="noopener">MyMemory 机器翻译</a>、<a href="https://freedictionaryapi.com/" target="_blank" rel="noopener">Free Dictionary API</a>（源自 <a href="https://en.wiktionary.org/" target="_blank" rel="noopener">维基词典</a>）提供查词服务。</p>
   </section>
 
   <!-- 练习视图 -->
@@ -608,7 +608,7 @@ body.touch .sent.sel-zh .tbtn[data-act="dictsel"]{display:inline-block;}
       <p id="metaInfo"></p>
     </header>
     <div id="sentenceList"></div>
-    <p class="practice-tip">提示：选中中文词句，点击浮标「翻译」查看英文译法；选中英文词句，点击浮标「查词典」查看释义（触屏设备请用句内按钮），中文查询结果中的英文单词可点击查看英英释义；选中英文可<i>标红</i>记录错误，再点一次可取消；工具栏「缺词标记」用于标注<i>缺词</i>位置（不参与拼接全文）</p>
+    <p class="practice-tip">提示：选中中文词句，点击浮标「翻译」查看英文译法；选中英文词句，点击浮标「查词典」查看释义（触屏设备请用句内按钮），中文查询结果中的英文单词可点击查看英英释义；选中英文可<i>标红</i>记录错误，再点一次可取消；工具栏「缺词标记」用于标注<i>缺词</i>位置</p>
   </section>
 </main>
 
@@ -1157,7 +1157,8 @@ function renderSentences(a){
         if (!box){
           var snap2 = touchSelSnap;
           if (snap2 && snap2.card === card && snap2.editor === en &&
-              document.contains(card) && snap2.range && !snap2.range.collapsed){
+              document.contains(card) && snap2.range && !snap2.range.collapsed &&
+              rangeStillIn(en, snap2.range)){
             try {
               en.focus();
               msel = window.getSelection();
@@ -1269,6 +1270,9 @@ function restoreSentence(a, i, t){
   if (ed){
     ed.innerHTML = sanitizeEnHTML(s.en);
     ed.classList.toggle('empty', !plainOf(s.en));
+    /* 单句恢复视为一个可撤销变更：入栈后 Ctrl+Z 可回到恢复前内容 */
+    pushEditorState(ed);
+    refreshUndoBtns();
     refreshDotsForCard(ed.closest('.sent'), s);
   }
   persistNow(); updateMeta();
@@ -1296,6 +1300,15 @@ function editorCaretOffset(ed){
   if (!sel || !sel.rangeCount) return -1;
   var range = sel.getRangeAt(0);
   if (!ed.contains(range.startContainer)) return -1;
+  /* 选区起点位于元素边界（如标红/缺词标记之后）时，按起点之前的全部文本折算偏移 */
+  if (range.startContainer.nodeType === 1){
+    try {
+      var pre = document.createRange();
+      pre.setStart(ed, 0);
+      pre.setEnd(range.startContainer, range.startOffset);
+      return pre.toString().length;
+    } catch(e){ return -1; }
+  }
   var off = 0;
   var walker = document.createTreeWalker(ed, NodeFilter.SHOW_TEXT, null);
   while (walker.nextNode()){
@@ -1325,8 +1338,20 @@ function setEditorCaretOffset(ed, target){
     r2.setStart(last, lastLen);
     r2.collapse(true);
     var sel2 = window.getSelection();
-    sel2.removeAllRanges(); sel2.addRange(r2);
+    sel2.removeAllRanges();
+    sel2.addRange(r2);
   }
+}
+/* 将光标折叠到指定节点之后 */
+function placeCaretAfter(node){
+  try {
+    var r = document.createRange();
+    r.setStartAfter(node);
+    r.collapse(true);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(r);
+  } catch(e){}
 }
 function onEditorInput(editor){
   var aid = editor.getAttribute('data-aid');
@@ -1344,6 +1369,9 @@ function onEditorInput(editor){
   clearTimeout(editor._normT);
   editor._normT = setTimeout(function(){
     if (!document.contains(editor)) return;
+    /* 编辑器内存在非折叠选区时跳过本轮合并：normalize 会拆散选区并使选区快照失效 */
+    var sb = selectionIn(editor);
+    if (sb && !sb.range.collapsed) return;
     var off = editorCaretOffset(editor);
     editor.normalize();
     if (off >= 0 && document.activeElement === editor) setEditorCaretOffset(editor, off);
@@ -1354,11 +1382,27 @@ function onEditorInput(editor){
 function bindEditor(el, articleId, idx){
   el.setAttribute('data-aid', articleId);
   el.setAttribute('data-idx', idx);
-  el.addEventListener('input', function(){ onEditorInput(el); });
-  /* 单句写作：禁止回车换行与富文本快捷键，保持纯文本单行语义 */
+  el.addEventListener('input', function(e){
+    /* 先入栈再走输入处理：onEditorInput 末尾按最新栈刷新撤回按钮状态；
+       输入法组合期间不入栈，组合结束由 compositionend 统一入栈（整段组合视为一个撤销步） */
+    if (!e.isComposing) pushEditorState(el);
+    onEditorInput(el);
+  });
+  el.addEventListener('compositionstart', function(){ el._composing = true; });
+  el.addEventListener('compositionend', function(){ el._composing = false; pushEditorState(el); });
+  /* 系统级撤销/重做（触屏键盘撤销键、浏览器菜单等）走自管栈 */
+  el.addEventListener('beforeinput', function(e){
+    if (e.inputType === 'historyUndo'){ e.preventDefault(); undoEditor(el); }
+    else if (e.inputType === 'historyRedo'){ e.preventDefault(); redoEditor(el); }
+  });
+  /* 单句写作：禁止回车换行与富文本快捷键，保持纯文本单行语义；Ctrl/Cmd+Z 撤回、Ctrl/Cmd+Shift+Z 或 Ctrl+Y 重做（按物理键位匹配，兼容非拉丁键盘布局） */
   el.addEventListener('keydown', function(e){
     if (e.isComposing) return;
     if (e.key === 'Enter'){ e.preventDefault(); return; }
+    var isZ = /^z$/i.test(e.key) || e.code === 'KeyZ';
+    var isY = /^y$/i.test(e.key) || e.code === 'KeyY';
+    if ((e.ctrlKey || e.metaKey) && isZ && !e.shiftKey){ e.preventDefault(); undoEditor(el); return; }
+    if ((e.ctrlKey || e.metaKey) && (isY || (isZ && e.shiftKey))){ e.preventDefault(); redoEditor(el); return; }
     if ((e.ctrlKey || e.metaKey) && /^[biu]$/i.test(e.key)) e.preventDefault();
   });
   /* 粘贴仅保留纯文本，execCommand 失效时手动插入 */
@@ -1384,29 +1428,75 @@ function bindEditor(el, articleId, idx){
   el.addEventListener('drop', function(e){ e.preventDefault(); });
   /* 失焦时合并相邻文本节点，减少碎片化节点对触控笔划掉定位的干扰 */
   el.addEventListener('blur', function(){ el.normalize(); });
+  /* 初始基线快照：撤销栈顶恒为当前状态 */
+  pushEditorState(el);
 }
 
-/* ---------------- 撤回 / 重做（触屏固定工具条） ---------------- */
+/* ---------------- 撤回 / 重做（编辑器自管快照栈） ---------------- */
 var lastEditor = null;
-/* 撤回/重做按钮可用态：编辑器聚焦时实时查询，失焦后沿用其记住的状态 */
+var UNDO_LIMIT = 200;
+
+/* 压入编辑器当前状态（内容 + 光标）；内容未变时仅刷新栈顶光标 */
+function pushEditorState(editor){
+  if (!editor._undoStack){ editor._undoStack = []; editor._redoStack = []; }
+  var html = serializeEditor(editor);
+  var stack = editor._undoStack;
+  var top = stack[stack.length - 1];
+  var caret = editorCaretOffset(editor);
+  if (top && top.html === html){ top.caret = caret; return; }
+  stack.push({ html: html, caret: caret });
+  if (stack.length > UNDO_LIMIT) stack.shift();
+  editor._redoStack.length = 0;
+}
+
+/* 将快照还原到编辑器：内容、空态、光标，并触发持久化与按钮刷新 */
+function applyEditorState(editor, st){
+  editor.innerHTML = st.html;
+  /* 序列化快照不携带缺词标记的只读属性，还原后补齐，防止光标进入标记内部改写 */
+  var gs = editor.querySelectorAll('.gap');
+  for (var gi = 0; gi < gs.length; gi++){
+    gs[gi].setAttribute('contenteditable', 'false');
+    gs[gi].setAttribute('title', '缺词标记：此处应有一个词');
+  }
+  editor.classList.toggle('empty', !plainOf(st.html));
+  editor.focus();
+  if (typeof st.caret === 'number' && st.caret >= 0) setEditorCaretOffset(editor, st.caret);
+  onEditorInput(editor);
+  refreshUndoBtns();
+}
+
+/* 撤回一步：当前状态移入重做栈，回到上一状态；输入法组合中不执行，避免摧毁未上屏文本 */
+function undoEditor(editor){
+  if (editor._composing) return false;
+  var stack = editor._undoStack;
+  if (!stack || stack.length < 2) return false;
+  editor._redoStack.push(stack.pop());
+  applyEditorState(editor, stack[stack.length - 1]);
+  return true;
+}
+
+/* 重做一步：取回最近撤回的状态 */
+function redoEditor(editor){
+  if (editor._composing) return false;
+  var redo = editor._redoStack;
+  if (!redo || !redo.length) return false;
+  editor._undoStack.push(redo.pop());
+  applyEditorState(editor, editor._undoStack[editor._undoStack.length - 1]);
+  return true;
+}
+
+/* 撤回/重做按钮可用态：按自管栈判定，失焦后沿用最近聚焦编辑器的状态 */
 function refreshUndoBtns(){
   var ed = document.activeElement;
   var isEd = !!(ed && ed.classList && ed.classList.contains('en'));
-  var st = null;
-  if (isEd){
-    var u = true, r = true;
-    try { u = document.queryCommandEnabled('undo'); } catch(e){}
-    try { r = document.queryCommandEnabled('redo'); } catch(e){}
-    ed._undoState = { u: u, r: r };
-    st = ed._undoState;
-  } else if (lastEditor && document.contains(lastEditor) && lastEditor._undoState){
-    st = lastEditor._undoState;
-  }
+  var target = isEd ? ed : (lastEditor && document.contains(lastEditor) ? lastEditor : null);
   /* 焦点位于标题等其他输入控件时不沿用旧状态，直接置灰，避免误操作到句子编辑器 */
   var ae = document.activeElement;
-  if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) st = null;
-  $('#undoBtn').disabled = !(st && st.u);
-  $('#redoBtn').disabled = !(st && st.r);
+  if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) target = null;
+  var stack = target ? target._undoStack : null;
+  var redo = target ? target._redoStack : null;
+  $('#undoBtn').disabled = !(stack && stack.length >= 2);
+  $('#redoBtn').disabled = !(redo && redo.length >= 1);
 }
 document.addEventListener('focusin', function(e){
   var t = e.target;
@@ -1418,6 +1508,8 @@ document.addEventListener('focusin', function(e){
   if (!isEditor) return;
   setTimeout(function(){
     if (document.activeElement !== t || !document.contains(t)) return;
+    /* 程序化平滑滚动会触发 scroll 事件，先延长词典面板保护期避免刚打开的面板被滚动关闭 */
+    dictGuardUntil = Math.max(dictGuardUntil, Date.now() + 700);
     try { t.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
     catch(err){ t.scrollIntoView(); }
   }, 350);
@@ -1428,12 +1520,13 @@ function runEditCmd(cmd, label){
   if (!ed || !ed.classList || !ed.classList.contains('en')) ed = lastEditor;
   if (!ed || !document.contains(ed)){ toast('还没有可' + label + '的编辑'); return; }
   ed.focus();
-  try { if (!document.execCommand(cmd)) toast('没有可' + label + '的内容'); } catch(e){}
+  var ok = (cmd === 'undo') ? undoEditor(ed) : redoEditor(ed);
+  if (!ok) toast('没有可' + label + '的内容');
   refreshUndoBtns();
 }
 $('#undoBtn').addEventListener('click', function(){ runEditCmd('undo', '撤回'); });
 $('#redoBtn').addEventListener('click', function(){ runEditCmd('redo', '重做'); });
-/* 点按按钮不转移焦点：保持编辑器聚焦与键盘常驻，避免 blur 归一化干扰撤销栈 */
+/* 点按按钮不转移焦点：保持编辑器聚焦与键盘常驻 */
 [$('#undoBtn'), $('#redoBtn')].forEach(function(b){
   b.addEventListener('pointerdown', function(e){ e.preventDefault(); });
 });
@@ -1447,6 +1540,12 @@ function selectionIn(editor){
   if (node.nodeType === 3) node = node.parentNode;
   if (!node.closest || !(editor === node || editor.contains(node))) return null;
   return { sel: sel, range: range };
+}
+
+function rangeStillIn(editor, range){
+  if (!range || !range.startContainer || !range.endContainer) return false;
+  try { return editor.contains(range.startContainer) && editor.contains(range.endContainer); }
+  catch(e){ return false; }
 }
 
 /* 判断选区是否严格穿过缺词标记（边界相接不算） */
@@ -1511,8 +1610,13 @@ function markSelection(editor, box){
     /* 展平嵌套标红：插入点落在旧标红内部时不产生 mark 套 mark */
     var nested = editor.querySelectorAll('.mark .mark');
     for (var i = nested.length - 1; i >= 0; i--) unwrapNode(nested[i]);
+    /* 相邻标红合并：紧邻的既有标红与之间空格并入新标红，空格按词间空格处理 */
+    mergeMarkNeighbors(span);
     if (box.sel) box.sel.removeAllRanges();
     editor.normalize();
+    /* 光标置于标红末尾并入撤销栈 */
+    placeCaretAfter(span);
+    pushEditorState(editor);
     onEditorInput(editor);
     toast('已标红');
   } catch(e){
@@ -1552,6 +1656,48 @@ function unwrapMarks(root){
   for (var i = ms.length - 1; i >= 0; i--) unwrapNode(ms[i]);
 }
 
+/* 相邻标红合并：新标红与左右既有标红之间仅隔非空空白文本时并为一处，
+   该空格视为词间空格（内部空格）保留在标红内；直接相接或隔着其他内容则不合并 */
+function mergeMarkNeighbors(span){
+  for (var guard = 0; guard < 32; guard++){
+    if (absorbMarkSide(span, true)) continue;
+    if (absorbMarkSide(span, false)) continue;
+    break;
+  }
+}
+
+/* 吸收单侧相邻标红：越过纯空白文本找到既有标红则并入，返回是否发生合并 */
+function absorbMarkSide(span, back){
+  var p = span.parentNode;
+  if (!p) return false;
+  var sib = back ? span.previousSibling : span.nextSibling;
+  var gaps = [];
+  while (sib && sib.nodeType === 3 && (sib.nodeValue === '' || /^\s+$/.test(sib.nodeValue))){
+    if (sib.nodeValue !== '') gaps.push(sib);
+    sib = back ? sib.previousSibling : sib.nextSibling;
+  }
+  if (!gaps.length) return false;
+  if (!sib || sib.nodeType !== 1 || !sib.classList || !sib.classList.contains('mark')) return false;
+  var kids = [];
+  for (var c = sib.firstChild; c; c = c.nextSibling) kids.push(c);
+  if (back){
+    /* 左侧：依原顺序（标红内容在前、空白在后）插入到本标红开头 */
+    gaps.reverse();
+    var seq = kids.concat(gaps);
+    var ref = span.firstChild;
+    for (var i = 0; i < seq.length; i++){
+      if (ref){ span.insertBefore(seq[i], ref); ref = seq[i].nextSibling; }
+      else span.appendChild(seq[i]);
+    }
+  } else {
+    /* 右侧：依原顺序（空白在前、标红内容在后）追加到本标红末尾 */
+    var seq2 = gaps.concat(kids);
+    for (var j = 0; j < seq2.length; j++) span.appendChild(seq2[j]);
+  }
+  p.removeChild(sib);
+  return true;
+}
+
 /* 取消标红：box 为选区盒 { sel, range }。实时选区可用时优先原生 containsNode 判定，
    选区已丢失时按快照范围与标记节点求交（intersectsNode），不依赖 compareBoundaryPoints */
 function unmarkSelection(editor, box){
@@ -1585,11 +1731,34 @@ function unmarkSelection(editor, box){
     parent.normalize();
   });
   if (box.sel) box.sel.removeAllRanges();
+  /* 光标回到原选区起点并入撤销栈（选区起点节点已随取消标红上提，边界仍然有效） */
+  try {
+    var r0 = box.range.cloneRange();
+    r0.collapse(true);
+    var sel0 = window.getSelection();
+    sel0.removeAllRanges();
+    sel0.addRange(r0);
+  } catch(e){}
+  pushEditorState(editor);
   onEditorInput(editor);
   toast('已取消标红');
 }
 
-/* 在光标处插入缺词标记：句内无光标/选区时拒绝插入 */
+/* 取某节点在编辑器文本流中前/后一侧的全部文本（跨节点，节点自身内容不计入） */
+function textAround(editor, node, before){
+  var r = document.createRange();
+  try {
+    if (before){ r.setStart(editor, 0); r.setEndBefore(node); }
+    else { r.setStartAfter(node); r.setEnd(editor, editor.childNodes.length); }
+    return r.toString();
+  } catch(e){
+    return ' ';
+  }
+}
+
+/* 在光标处插入缺词标记：句内无光标/选区时拒绝插入；
+   插入后检测左右相邻字符，任一侧缺空格且非编辑器边界时补 1 个空格，
+   确保标记左右各有空格（用户已有的多个空格保持原样不动） */
 function insertGapMarker(editor){
   var box = selectionIn(editor);
   if (!box){ toast('请先将光标放入本句缺词位置'); return false; }
@@ -1603,13 +1772,27 @@ function insertGapMarker(editor){
     marker.setAttribute('title', '缺词标记：此处应有一个词');
     marker.textContent = '|';
     range.insertNode(marker);
+    /* 空格补全：前侧看前一字符、后侧看后一字符；空文本表示位于编辑器首/尾，不补 */
+    var leadSpace = null, tailSpace = null;
+    var before = textAround(editor, marker, true);
+    if (before !== '' && !/\s$/.test(before)){
+      leadSpace = document.createTextNode(' ');
+      marker.parentNode.insertBefore(leadSpace, marker);
+    }
+    var afterTxt = textAround(editor, marker, false);
+    if (afterTxt !== '' && !/^\s/.test(afterTxt)){
+      tailSpace = document.createTextNode(' ');
+      marker.parentNode.insertBefore(tailSpace, marker.nextSibling);
+    }
+    /* 先归一化再定位光标：归一化会合并尾部空格与后续文本，若后设光标会被挤到合并节点之后 */
+    editor.normalize();
     var after = document.createRange();
     after.setStartAfter(marker);
     after.collapse(true);
     var sel = window.getSelection();
     sel.removeAllRanges();
     sel.addRange(after);
-    editor.normalize();
+    pushEditorState(editor);
     onEditorInput(editor);
     toast('已插入缺词标记');
     return true;
@@ -1644,6 +1827,7 @@ var chipDictBtn = $('#chipDict'), chipMarkBtn = $('#chipMark');
 var chipDictTxt = $('#chipDictTxt');
 var currentDictWord = '';
 var dictAnchor = null;
+var dictGuardUntil = 0; /* 词典面板保护期：面板刚打开或程序化平滑滚动期间，不因 scroll/resize 立即关闭 */
 var chipCtx = null; /* 浮标上下文：{ kind:'zh'|'en', text, editor, range } */
 var chipSnapshot = null; /* 触屏点击浮标时系统可能先清空选区，保留最近一次上下文快照 */
 var touchSelSnap = null; /* 触屏最近一次有效选区快照，供句内按钮点击时选区被清空后回退 */
@@ -1811,6 +1995,8 @@ function chipAction(kind){
   }
   if (ctx.kind !== 'en' || !ctx.editor) return;
   var editor = ctx.editor, range = ctx.range;
+  /* 快照范围可能因归一化而失效，编辑器也可能因重渲染脱离文档：失效时不执行，提示重新选择 */
+  if (!document.contains(editor) || !rangeStillIn(editor, range)){ toast('请先选中要操作的文字'); return; }
   hideChip();
   editor.focus();
   var sel = window.getSelection();
@@ -1844,6 +2030,7 @@ function openDict(word, anchorEl){
   $('#dictPhon').textContent = '';
   $('#dictBody').innerHTML = '<p class="dict-loading">查询中 …</p>';
   dictPanel.style.display = 'flex';
+  dictGuardUntil = Math.max(dictGuardUntil, Date.now() + 600);
   /* 句内按钮触发时以按钮为锚点定位面板（触屏端无浮标锚点） */
   if (anchorEl && anchorEl.getBoundingClientRect){
     var ar = anchorEl.getBoundingClientRect();
@@ -2081,11 +2268,15 @@ document.addEventListener('mousedown', function(e){
 });
 window.addEventListener('scroll', function(e){
   if (dictPanel.contains(e.target)) return;
+  /* 保护期内忽略滚动（含面板刚打开时的惯性/平滑滚动残余），避免面板闪现即逝 */
+  if (Date.now() < dictGuardUntil) return;
   dictPanel.style.display = 'none';
   hideChip();
 }, true);
 window.addEventListener('resize', function(){
-  dictPanel.style.display = 'none'; hideChip(); closeRail();
+  /* 键盘收起引发的 resize 同样受保护期约束 */
+  if (Date.now() >= dictGuardUntil) dictPanel.style.display = 'none';
+  hideChip(); closeRail();
   if ($('#cheerOverlay').classList.contains('show')) cheerResize();
 });
 
@@ -2323,8 +2514,6 @@ function miniCheerFrame(){
   if (live) dy = miniScrollTop() - miniScroll0;
   miniCtx.save();
   if (live){
-    /* 挖孔裁剪：当前句卡矩形内不绘制，粒子如自卡片底下涌出；
-       画布位于其他卡片之上，其余卡片不再遮挡粒子 */
     miniCtx.beginPath();
     miniCtx.rect(0, 0, vw, vh);
     miniCtx.rect(live.left, live.top, live.width, live.height);
@@ -2333,7 +2522,6 @@ function miniCheerFrame(){
   for (var i = miniParts.length - 1; i >= 0; i--){
     var p = miniParts[i];
     p.life++;
-    /* 更低重力 + 速度阻尼：上抛更高、飘落更缓，拉大纵向幅度并延长可见时间 */
     p.vy += 0.055; p.vx *= 0.985; p.vy *= 0.975;
     p.x += p.vx + Math.cos(p.life * .07 + p.wob) * .4;
     p.y += p.vy;
