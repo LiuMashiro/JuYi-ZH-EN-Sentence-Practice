@@ -575,7 +575,7 @@ body.touch .sent.sel-zh .tbtn[data-act="dictsel"]{display:inline-block;}
       <button id="cancelEditBtn" class="btn" hidden>取消编辑</button>
       <button id="startBtn" class="btn primary">开始练习</button>
     </div>
-    <p class="attribution"><br>1.0.5 · 使用翻译 / 查词典功能时，可能调用 <a href="https://mymemory.translated.net/" target="_blank" rel="noopener">MyMemory 机器翻译</a>、<a href="https://freedictionaryapi.com/" target="_blank" rel="noopener">Free Dictionary API</a>（源自 <a href="https://en.wiktionary.org/" target="_blank" rel="noopener">维基词典</a>）提供查词服务。</p>
+    <p class="attribution"><br>1.0.6 · 使用翻译 / 查词典功能时，可能调用 <a href="https://mymemory.translated.net/" target="_blank" rel="noopener">MyMemory 机器翻译</a>、<a href="https://freedictionaryapi.com/" target="_blank" rel="noopener">Free Dictionary API</a>（源自 <a href="https://en.wiktionary.org/" target="_blank" rel="noopener">维基词典</a>）提供查词服务。</p>
   </section>
 
   <!-- 练习视图 -->
@@ -1597,7 +1597,12 @@ function markSelection(editor, box){
   if (!box) { toast('请先在本句中选中要标红的文字'); return; }
   if (box.range.collapsed) { toast('请先选中要标红的文字'); return; }
   if (selectionIntersectsGap(editor, box.range)) { toast('无法标红缺词标记'); return; }
+  /* 记录裁剪前边界：选区是否本就包含首/尾空白，作为相邻标红合并的依据 */
+  var rawStart = { n: box.range.startContainer, o: box.range.startOffset };
+  var rawEnd = { n: box.range.endContainer, o: box.range.endOffset };
   if (!trimRangeEdges(box.range)) { toast('选中内容只有空白，无需标红'); return; }
+  var leadSel = !(box.range.startContainer === rawStart.n && box.range.startOffset === rawStart.o);
+  var tailSel = !(box.range.endContainer === rawEnd.n && box.range.endOffset === rawEnd.o);
   if (selectionAllMarked(editor, box.range)) { toast('已标红'); return; }
   try {
     var frag = box.range.extractContents();
@@ -1610,8 +1615,9 @@ function markSelection(editor, box){
     /* 展平嵌套标红：插入点落在旧标红内部时不产生 mark 套 mark */
     var nested = editor.querySelectorAll('.mark .mark');
     for (var i = nested.length - 1; i >= 0; i--) unwrapNode(nested[i]);
-    /* 相邻标红合并：紧邻的既有标红与之间空格并入新标红，空格按词间空格处理 */
-    mergeMarkNeighbors(span);
+    /* 相邻标红合并：仅当用户选区本就包含该侧边缘空格时才并入（贴着既有标红的空格视为内部空格），
+       用户未选中的空格不并入，两个标红各自独立 */
+    mergeMarkNeighbors(span, leadSel, tailSel);
     if (box.sel) box.sel.removeAllRanges();
     editor.normalize();
     /* 光标置于标红末尾并入撤销栈 */
@@ -1656,12 +1662,13 @@ function unwrapMarks(root){
   for (var i = ms.length - 1; i >= 0; i--) unwrapNode(ms[i]);
 }
 
-/* 相邻标红合并：新标红与左右既有标红之间仅隔非空空白文本时并为一处，
-   该空格视为词间空格（内部空格）保留在标红内；直接相接或隔着其他内容则不合并 */
-function mergeMarkNeighbors(span){
+/* 相邻标红合并：仅当用户选区本就包含该侧边缘空格（allowBack/allowFwd）时，
+   才把紧邻的既有标红与之间的空格并入新标红（空格视为内部空格保留在标红内）；
+   用户未选中的空格不并入，两侧标红各自独立；直接相接或隔着其他内容也不合并 */
+function mergeMarkNeighbors(span, allowBack, allowFwd){
   for (var guard = 0; guard < 32; guard++){
-    if (absorbMarkSide(span, true)) continue;
-    if (absorbMarkSide(span, false)) continue;
+    if (allowBack && absorbMarkSide(span, true)) continue;
+    if (allowFwd && absorbMarkSide(span, false)) continue;
     break;
   }
 }
@@ -1905,9 +1912,11 @@ function updateChip(){
     if (selectionIntersectsGap(enEl, range)){ hideChip(); return; }
     chipDictTxt.textContent = '查词典';
     chipCtx = { kind: 'en', text: text, editor: enEl, range: range.cloneRange() };
-    trimRangeEdges(chipCtx.range); /* 标红与按钮态判定均忽略边缘空格 */
+    /* 按钮态判定忽略边缘空格（用克隆判定），快照保留原始选区：标红合并需凭原始首尾空白判断用户意图 */
+    var markRange = range.cloneRange();
+    trimRangeEdges(markRange);
     chipSnapshot = chipCtx;
-    showChip(rect, { dict: text.length <= 60, marked: selectionAllMarked(enEl, chipCtx.range) });
+    showChip(rect, { dict: text.length <= 60, marked: selectionAllMarked(enEl, markRange) });
   }
 }
 /* 选区变化：触屏即时保存快照（供按钮点击回退），浮标定位仍去抖等选区稳定 */
@@ -2023,6 +2032,39 @@ function bindChipBtn(btn, kind){
 }
 bindChipBtn(chipDictBtn, 'dict');
 bindChipBtn(chipMarkBtn, 'mark');
+
+/* 浮标边缘点击路由：浮标容器有内边距，点击落在边缘/角落时目标为容器而非按钮，
+   按钮处理器不会触发（仅有按压动效）；此时按几何位置转发给最近的可见按钮执行 */
+function nearestChipButton(x, y){
+  var btns = [chipDictBtn, chipMarkBtn];
+  var best = null, bestD = Infinity;
+  btns.forEach(function(b){
+    if (b.hidden) return;
+    var r = b.getBoundingClientRect();
+    var dx = Math.max(r.left - x, 0, x - r.right);
+    var dy = Math.max(r.top - y, 0, y - r.bottom);
+    var d = dx * dx + dy * dy;
+    if (d < bestD){ bestD = d; best = b; }
+  });
+  return best;
+}
+/* 触屏：pointerdown 落在容器上（未命中按钮）时立即转发执行，防系统随后清空选区 */
+dictChip.addEventListener('pointerdown', function(e){
+  if (e.pointerType === 'mouse') return;
+  if (e.target.closest && e.target.closest('button')) return;
+  var btn = nearestChipButton(e.clientX, e.clientY);
+  if (!btn) return;
+  chipFiredOnDown = true;
+  chipAction(btn === chipDictBtn ? 'dict' : 'mark');
+});
+/* 鼠标：click 落在容器上时转发给最近按钮；已由 pointerdown 执行过的（触屏）不重复执行 */
+dictChip.addEventListener('click', function(ev){
+  if (chipFiredOnDown){ chipFiredOnDown = false; return; }
+  if (ev.target.closest && ev.target.closest('button')) return;
+  var btn2 = nearestChipButton(ev.clientX, ev.clientY);
+  if (!btn2) return;
+  chipAction(btn2 === chipDictBtn ? 'dict' : 'mark');
+});
 
 function openDict(word, anchorEl){
   currentDictWord = word;
