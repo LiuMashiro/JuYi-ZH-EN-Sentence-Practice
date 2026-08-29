@@ -1,6 +1,11 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [1.0.6]
+### Fixed
+- 浮标边缘点击时有动效未成功的问题
+- 即使被选内容不包括紧邻另一段标红内容的空格，也会包含空格并合并两处标红的问题
+
 ## [1.0.5]
 ### Added
 - 缺词标记左右空格自动补全
