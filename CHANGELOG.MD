@@ -12,7 +12,6 @@ All notable changes to this project will be documented in this file.
 - 多选可视化按钮
 - 关于页
 - 弹窗关闭动画
-- 可选的单词标错功能
 <img width="1142" height="1277" alt="统计回顾" src="https://github.com/user-attachments/assets/2b2fb2a7-3f98-46c3-9f72-4b2a8b2c2f76" />
 
 ### Changed
