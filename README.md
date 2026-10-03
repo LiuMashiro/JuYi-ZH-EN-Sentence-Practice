@@ -24,7 +24,7 @@
   - 或者，下载 .html 文件，双击打开即可运行
 - 输入中文段落，拆句，翻译
 - 将逐句翻译结果或整篇翻译结果复制，交由 AI 进行批改优化，完成学习理解后重写，记录错误
-- 保留不同版本以供复盘
+- 保留不同版本以供复盘回顾
 - 进阶（可选）使用Chrome app式窗口打开（独立窗口而非标签页，UI更清爽，使用更方便）：
   - 在桌面右键添加快捷方式，输入`"C:\Program Files\Google\Chrome\Application\chrome.exe" --app=file:///{html位置}` ，如`"C:\Program Files\Google\Chrome\Application\chrome.exe" --app=file:///C:/Users/{Username}/Documents/JuYi.html`
 
@@ -38,6 +38,7 @@
 - 版本管理：支持逐句或整篇保存初稿、二稿与终稿，随时查看历史版本、只读预览或一键恢复。支持自动保存、回收站。
 - 数据备份：一键导出全量 JSON 备份文件，支持随时导入恢复。
 - 数据完全本地存储。
+- 支持移动端、触屏端。
 
 ## 说明
   - 使用查词典功能时，可能调用[MyMemory 机器翻译](https://mymemory.translated.net/)、[Free Dictionary API](https://www.FreeDictionaryAPI.com)（源自[Wiktionary](https://en.wiktionary.org/)）提供查词服务。
