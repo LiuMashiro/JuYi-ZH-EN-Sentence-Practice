@@ -190,8 +190,6 @@ button{font-family:inherit;cursor:pointer;}
 .en.empty::before{
   content:attr(data-ph);color:#b9b9bd;font-style:italic;pointer-events:none;
   position:absolute;left:var(--en-pad-x);top:var(--en-pad-y);right:var(--en-pad-x);
-  /* 窄屏下单行显示并以省略号截断，避免折行撑高输入框 */
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .mark{
   color:var(--err);background:var(--err-bg);
@@ -217,23 +215,38 @@ button{font-family:inherit;cursor:pointer;}
   border:1px solid var(--line-2);background:var(--surface);color:var(--ink);transition:.15s;
 }
 .tbtn-copy:hover{background:var(--ink);border-color:var(--ink);color:#fff;}
-.tbtn-copy svg{width:14px;height:14px;}
+.tbtn-copy svg,.tbtn svg{width:14px;height:14px;flex:none;}
 .tbtn{
   border:none;background:none;font-size:12px;color:var(--muted);
   padding:6px 8px;border-radius:8px;transition:.14s;
+  display:inline-flex;align-items:center;gap:6px;
 }
 .tbtn:hover{color:var(--err);background:var(--err-bg);}
 /* 句子右下角：初/二/终稿状态圆点 */
-.slot-dots{position:absolute;right:11px;bottom:7px;display:flex;gap:2px;}
-.sdot{border:none;background:none;padding:2.5px;line-height:0;border-radius:50%;transition:.14s;cursor:default;}
-.sdot i{display:block;width:9px;height:9px;border-radius:50%;background:var(--surface);border:1px solid var(--line-2);transition:.14s;}
+.slot-dots{position:absolute;right:12px;bottom:6px;display:flex;}
+.sdot{border:none;background:none;padding:1.5px;line-height:0;border-radius:50%;transition:.14s;cursor:default;}
+.sdot i{display:block;width:6px;height:6px;border-radius:50%;background:var(--surface);border:1px solid var(--line-2);transition:.14s;}
 .sdot.on{cursor:pointer;}
 .sdot.on i{background:#bcbcc4;border-color:transparent;}
 .sdot.on:hover i{transform:scale(1.25);}
 .sdot.cur i{background:var(--muted);border-color:transparent;}
 /* 工具按钮成功反馈 */
-.flash-ok{display:inline-flex;align-items:center;gap:6px;}
-.tbtn.flash-ok{color:var(--ink);font-weight:500;}
+/* 工具按钮成功反馈 */
+/* 反馈内容以覆盖层呈现：原内容保留占位，反馈层绝对定位其上，盒宽不变，避免工具栏在反馈期间换行抖动 */
+.flash-ok{display:inline-flex;align-items:center;position:relative;}
+/* 占位层沿用按钮原有的内边距与间距，宽度与反馈前完全一致 */
+.flash-ok>.flash-base{visibility:hidden;display:inline-flex;align-items:center;gap:inherit;}
+.flash-ok>.flash-layer{
+  position:absolute;left:0;right:0;top:0;bottom:0;
+  padding:inherit;
+  display:flex;align-items:center;justify-content:flex-start;gap:6px;
+  white-space:nowrap;pointer-events:none;
+}
+/* 反馈层内容可能比按钮本身宽，锁定对勾图标尺寸，避免其被 flex 压缩 */
+.flash-ok>.flash-layer>svg{flex:none;}
+/* 加粗只作用于覆盖层；若作用于按钮本体会让占位层变宽，仍然触发换行 */
+.tbtn.flash-ok{color:var(--ink);}
+.tbtn.flash-ok>.flash-layer{font-weight:500;}
 .practice-tip{margin-top:26px;font-size:12px;color:var(--faint);line-height:2;}
 .practice-tip i{font-style:normal;color:var(--err);}
 
@@ -384,7 +397,11 @@ button{font-family:inherit;cursor:pointer;}
 
 /* ================= 统计与回顾 ================= */
 #statsOverlay .panel{width:min(760px,100%);}
-.stat-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:16px;}
+/* 统计卡片锁定 3×2（宽）与 2×3（窄）两种排布，避免 auto-fit 出现 1×6、4+2 等不对称行 */
+.stat-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px;}
+@media (max-width:600px){
+  .stat-cards{grid-template-columns:repeat(2,1fr);}
+}
 .stat-card{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:13px 15px;}
 .stat-label{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--faint);}
 .stat-value{font-size:22px;font-weight:700;margin-top:7px;font-variant-numeric:tabular-nums;}
@@ -550,25 +567,14 @@ button{font-family:inherit;cursor:pointer;}
 
 /* ================= 窄窗口：侧栏抽屉 ================= */
 @media (max-width:880px){
-  /* 菜单键悬浮于内容之上（与撤回键同理），内容不再为其预留左侧竖条 */
-  #menuBtn{display:flex;left:12px;top:12px;}
+  #menuBtn{display:flex;}
   #rail{
     position:fixed;left:0;top:0;bottom:0;z-index:70;
-    /* 抽屉高度交给 top/bottom 决定：旧浏览器不支持 dvh 时不会因 100vh 把底部按钮挤出屏幕 */
-    height:auto;
     transform:translateX(-102%);
     box-shadow:var(--shadow-lg);
   }
   #rail.open{transform:none;}
-  /* 横向空间全留给内容，顶部仅让出悬浮键的高度 */
-  .wrap{padding-left:20px;padding-right:20px;}
-  #workHead{padding-top:68px;}
-  #setupView{padding-top:68px;}
-  /* 句卡改为单列：句子编号独占一行，不再占用横向空间 */
-  .sent{grid-template-columns:1fr;gap:8px;padding:18px 16px 20px;}
-  .sent-no{padding-top:0;}
-  /* 档位圆点放大后，句内工具栏右侧多留出余量，避免最右按钮被圆点压住 */
-  .tools{padding-right:60px;}
+  .wrap{padding-left:68px;padding-right:24px;}
 }
 
 /* ================= 触屏优化（iPad / 平板） ================= */
@@ -589,8 +595,8 @@ button{font-family:inherit;cursor:pointer;}
   #menuBtn{width:44px;height:44px;}
   .rail-foot button{padding:11px 0;}
   #railCollapseBtn{padding:9px;}
-  .sdot{padding:4px;}
-  .tools{padding-right:72px;}
+  .sdot{padding:3px;}
+  .tools{padding-right:60px;}
 }
 
 /* ================= 触屏专用界面：撤回重做栏与句内固定按钮 ================= */
@@ -604,7 +610,12 @@ body.touch #undoBar.show{display:flex;}
   box-shadow:var(--shadow-md);
 }
 #undoBar button:hover{border-color:var(--faint);}
-#undoBar button:disabled{opacity:.35;}
+/* 不可用态：改用与页面其他模糊一致的毛玻璃表现 */
+#undoBar button:disabled{
+  opacity:1;color:var(--faint);border-color:var(--line);
+  background:rgba(255,255,255,.55);
+  backdrop-filter:blur(8px) saturate(1.1);-webkit-backdrop-filter:blur(8px) saturate(1.1);
+}
 /* 编辑器内恢复原生触摸手势：系统双击选词与触控笔划掉依赖完整手势识别 */
 .en{touch-action:auto;}
 /* 触屏专用按钮：PC 端隐藏；查词典/标红仅在句内选中文字时出现并加粗 */
@@ -615,7 +626,80 @@ body.touch .sent .tbtn[data-act="markerrsel"]{display:none;font-weight:700;}
 body.touch .sent.sel-en .tbtn[data-act="dictsel"],
 body.touch .sent.sel-en .tbtn[data-act="marksel"],
 body.touch .sent.sel-en .tbtn[data-act="markerrsel"],
-body.touch .sent.sel-zh .tbtn[data-act="dictsel"]{display:inline-block;}
+body.touch .sent.sel-zh .tbtn[data-act="dictsel"]{display:inline-flex;align-items:center;justify-content:center;}
+
+/* ================= 手机竖屏触控：以下适配仅在此生效，桌面端保持原样式 ================= */
+/* 作用域与脚本的 isPhoneView() 判定完全一致；置于样式表末尾，确保覆盖前面的触屏通用规则 */
+@media (max-width:880px) and (orientation:portrait) and (any-pointer:coarse){
+  /* 菜单键悬浮于内容之上（与撤回键同理），内容不再为其预留左侧竖条 */
+  #menuBtn{left:12px;top:12px;}
+  /* 抽屉高度交给 top/bottom 决定：不支持 dvh 的旧浏览器不会因 100vh 把底部按钮挤出屏幕 */
+  #rail{height:auto;}
+  /* 横向空间全留给内容 */
+  .wrap{padding-left:20px;padding-right:20px;}
+  /* 顶部仅让出悬浮键的高度，避免标题与操作按钮被遮 */
+  #workHead{padding-top:68px;}
+  #setupView{padding-top:68px;}
+  /* 顶部四个按钮只显示图标，收窄横向占用；尺寸保底 44px 保证触控目标 */
+  .head-btns .btn{padding:0;min-width:44px;height:44px;justify-content:center;}
+  .head-btns .btn .btn-txt{display:none;}
+  /* 句卡单列：句子编号独占一行，不再占用横向空间 */
+  .sent{grid-template-columns:1fr;gap:8px;padding:18px 16px 20px;}
+  .sent-no{padding-top:0;}
+  /* 句右下角三个圆点放大 */
+  .slot-dots{right:11px;bottom:7px;gap:2px;}
+  .sdot{padding:5px;}
+  .sdot i{width:9px;height:9px;}
+  /* 圆点放大后，句内工具栏右侧多留余量，避免最右按钮被压住 */
+  .tools{padding-right:72px;}
+  /* 句内六个按钮统一为仅图标的方形按钮 */
+  .tools .tbtn-copy,
+  .tools .tbtn[data-act="gap"],
+  .tools .tbtn[data-act="save"],
+  .tools .tbtn[data-act="dictsel"],
+  .tools .tbtn[data-act="marksel"],
+  .tools .tbtn[data-act="markerrsel"]{
+    /* 尺寸由网格单元格决定，窄屏自动收窄；高度显式给定，不依赖拉伸行为 */
+    padding:0;min-width:0;height:34px;border-radius:10px;
+    display:inline-flex;align-items:center;justify-content:center;
+  }
+  .tools .tbtn{border:1px solid var(--line-2);background:var(--surface);}
+  /* 手机端不区分主次：图标同色，悬停/按下也不再变黑变红 */
+  .tools .tbtn-copy{color:var(--muted);}
+  .tools .tbtn-copy:hover,.tools .tbtn:hover{
+    background:var(--surface);color:var(--muted);border-color:var(--line-2);
+  }
+  /* 六个按钮固定一行 1×6：轨道上限 34px，空间不足时整体等比收窄，不换行 */
+  .tools{
+    display:grid;grid-template-columns:repeat(6,minmax(0,34px));grid-auto-rows:34px;
+    gap:6px;justify-content:start;
+    /* 基础规则中的 align-items:center 是给 flex 用的，转到网格后会让按钮不再撑满行高 */
+    align-items:stretch;
+  }
+  .tools .btn-txt{display:none;}
+  /* 查词典 / 标红 / 记错在手机端常显（不再依赖是否已选中），未选中时点按会提示先选中内容 */
+  body.touch .sent .tbtn[data-act="dictsel"],
+  body.touch .sent .tbtn[data-act="marksel"],
+  body.touch .sent .tbtn[data-act="markerrsel"]{
+    display:inline-flex;align-items:center;justify-content:center;
+  }
+  /* 历史版本条目：四个操作按钮换到独立一行，「已保存 N 句 · 时间 · 相似度」不再被挤压 */
+  .snap-item{flex-wrap:wrap;gap:6px 13px;}
+  .snap-main{flex:1 1 calc(100% - 39px);}
+  .snap-acts{flex:1 1 100%;justify-content:flex-end;gap:6px;}
+  /* 成功反馈：图标位置换成对勾并做一次短暂的弹入 */
+  .flash-ok>.flash-layer{justify-content:center;}
+  .flash-ok>.flash-layer>svg{animation:flashPop .22s ease;}
+  /* 输入框内左边距：中文比英文内缩更少（英文有明确边框，视觉上本就更靠内） */
+  .en{--en-pad-x:18px;}
+  .zh{padding-left:9px;}
+  .en.empty::before{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+}
+/* 对勾弹入动画 */
+@keyframes flashPop{from{transform:scale(.45);opacity:0;}to{transform:scale(1);opacity:1;}}
+@media (prefers-reduced-motion:reduce){
+  .flash-ok>.flash-layer>svg{animation:none;}
+}
 </style>
 </head>
 <body>
@@ -697,19 +781,19 @@ body.touch .sent.sel-zh .tbtn[data-act="dictsel"]{display:inline-block;}
         <div class="head-btns">
           <button id="saveSlotBtn" class="btn" title="将当前内容全部存入某一版本">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4z"/></svg>
-            整篇保存
+            <span class="btn-txt">整篇保存</span>
           </button>
-          <button id="historyBtn" class="btn">
+          <button id="historyBtn" class="btn" title="查看历史版本并恢复">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2.5"/></svg>
-            历史版本
+            <span class="btn-txt">历史版本</span>
           </button>
           <button id="editSourceBtn" class="btn" title="修改中文原文并重新拆分，已写的译文将按原句保留">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-            编辑原文
+            <span class="btn-txt">编辑原文</span>
           </button>
           <button id="concatBtn" class="btn" title="将所有已写英文单句拼接为完整文章">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
-            拼接全文
+            <span class="btn-txt">拼接全文</span>
           </button>
         </div>
       </div>
@@ -726,8 +810,8 @@ body.touch .sent.sel-zh .tbtn[data-act="dictsel"]{display:inline-block;}
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
     <span id="chipDictTxt">查词典</span>
   </button>
-  <button type="button" class="chip-act" id="chipMark" hidden>标红</button>
-  <button type="button" class="chip-act" id="chipMarkErr" hidden>记错</button>
+  <button type="button" class="chip-act" id="chipMark" hidden><span class="btn-txt">标红</span></button>
+  <button type="button" class="chip-act" id="chipMarkErr" hidden><span class="btn-txt">记错</span></button>
 </div>
 
 <!-- 档位保存菜单 -->
@@ -1150,14 +1234,30 @@ function toast(msg, dur){
 
 /* ---------------- 工具按钮成功反馈 ---------------- */
 var CHECK_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+/* 句内工具按钮图标：复制本句 / 缺词标记 / 保存本句（同整篇保存） */
+var ICON_COPY = '<svg viewBox="0 0 1024 1024" width="14" height="14"><g transform="translate(1024,0) scale(-1,1)"><path d="M661.333333 234.666667A64 64 0 0 1 725.333333 298.666667v597.333333a64 64 0 0 1-64 64h-469.333333A64 64 0 0 1 128 896V298.666667a64 64 0 0 1 64-64z m-21.333333 85.333333H213.333333v554.666667h426.666667v-554.666667z m191.829333-256a64 64 0 0 1 63.744 57.856l0.256 6.144v575.701333a42.666667 42.666667 0 0 1-85.034666 4.992l-0.298667-4.992V149.333333H384a42.666667 42.666667 0 0 1-42.368-37.674666L341.333333 106.666667a42.666667 42.666667 0 0 1 37.674667-42.368L384 64h447.829333z" fill="currentColor"></path></g></svg>';
+/* 缺词标记图标在原始 1028 网格中实际只占约一半，裁掉留白使三枚图标视觉大小一致 */
+var ICON_GAP = '<svg viewBox="155 154 714 714" width="14" height="14"><path d="M532.266 810.341l212.056-211.407c4.8-4.787 7.434-11.165 7.434-17.95 0-6.836-2.673-13.265-7.511-18.102-9.219-9.203-23.64-10.107-33.759-2.165l-172.531 171.945 0-502.568c0-14.028-11.469-25.447-25.574-25.447s-25.563 11.419-25.562 25.447l0 502.555-176.603-176.107c-10.54-5.296-22.709-3.653-30.641 4.253-4.735 4.735-7.332 11.139-7.333 18.038 0 7.587 3.055 14.83 8.605 20.381l14.093 14.106 38.841 38.712 7.178 7.307 151.525 150.979c5.028 5.002 11.915 7.537 19.4 7.166l0.496-0.026 0.509 0.025c7.498 0.369 14.386-2.164 19.374-7.142l0 0zM532.266 810.341z" fill="currentColor"></path></svg>';
+/* 查词典沿用页面现有的放大镜图标；标红 / 记错为实心图标，取 currentColor 以跟随按钮状态 */
+var ICON_DICT = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>';
+var ICON_MARK = '<svg viewBox="0 0 1024 1024" width="14" height="14"><path d="M341.333333 128c-50.730667 0-89.344 7.04-117.504 18.261333A205.994667 205.994667 0 0 0 213.333333 150.869333v420.693334C248.277333 560.768 290.730667 554.666667 341.333333 554.666667c60.458667 0 101.674667 11.776 186.496 45.738666 75.178667 30.037333 108.629333 39.594667 154.837334 39.594667 50.730667 0 89.344-7.04 117.504-18.261333 4.053333-1.621333 7.552-3.157333 10.496-4.565334v-420.693333c-34.944 10.752-77.397333 16.853333-128 16.853333-60.458667 0-101.674667-11.776-186.496-45.738666C420.992 137.557333 387.541333 128 341.333333 128zM128 128c0-11.306667 4.48-22.186667 12.501333-30.165333 9.386667-9.386667 26.24-20.608 51.669334-30.762667C230.656 51.626667 280.064 42.666667 341.333333 42.666667c60.458667 0 101.674667 11.776 186.496 45.738666C603.008 118.442667 636.458667 128 682.666667 128c50.730667 0 89.344-7.04 117.504-18.261333 14.549333-5.845333 21.717333-10.581333 22.997333-11.904C850.048 70.954667 896 89.984 896 128v512c0 11.306667-4.48 22.186667-12.501333 30.165333-9.386667 9.386667-26.24 20.608-51.669334 30.762667-38.485333 15.445333-87.893333 24.405333-149.162666 24.405333-60.458667 0-101.674667-11.776-186.496-45.738666C420.992 649.557333 387.541333 640 341.333333 640c-50.730667 0-89.344 7.04-117.504 18.261333a164.864 164.864 0 0 0-10.538666 4.608L213.333333 938.666667a42.666667 42.666667 0 0 1-85.333333 0V128z" fill="currentColor"></path></svg>';
+var ICON_ERR = '<svg viewBox="0 0 1024 1024" width="14" height="14"><path d="M156.09136 918.752731a50.844091 50.844091 0 0 1 0-101.688183h711.81728a50.844091 50.844091 0 0 1 0 101.688183z m50.844092-762.661371a50.844091 50.844091 0 0 1 101.688183 0v305.064549a203.376365 203.376365 0 1 0 406.75273 0v-305.064549a50.844091 50.844091 0 1 1 101.688183 0v305.064549a305.064548 305.064548 0 1 1-610.129096 0z" fill="currentColor"></path></svg>';
+var ICON_SAVE = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4z"/></svg>';
 function flashButton(btn, text){
   if (!btn || !document.contains(btn)) return;
   if (btn._flashT){ clearTimeout(btn._flashT); }
   else { btn._flashHTML = btn.innerHTML; }
   btn.classList.add('flash-ok');
-  btn.innerHTML = CHECK_SVG + '<span>' + text + '</span>';
+  /* 手机竖屏端按钮为纯图标，反馈时仅把图标换成对勾，不再追加文字 */
+  var layerInner = isPhoneView() ? CHECK_SVG : (CHECK_SVG + '<span></span>');
+  btn.innerHTML = '<span class="flash-base">' + (btn._flashHTML || '') + '</span>' +
+                  '<span class="flash-layer">' + layerInner + '</span>';
+  if (!isPhoneView()){
+    var slot = btn.querySelector('.flash-layer>span');
+    if (slot) slot.textContent = text;
+  }
   btn._flashT = setTimeout(function(){
-    btn.innerHTML = btn._flashHTML;
+    btn.innerHTML = btn._flashHTML || '';
     btn.classList.remove('flash-ok');
     btn._flashT = null;
     btn._flashHTML = null;
@@ -1290,7 +1390,11 @@ $('#railCollapseBtn').addEventListener('click', function(){
 });
 /* 点击抽屉与菜单键以外的任意区域时收起抽屉 */
 document.addEventListener('mousedown', function(e){
-  if (rail.classList.contains('open') && !rail.contains(e.target) && !menuBtn.contains(e.target)) closeRail();
+  if (!rail.classList.contains('open')) return;
+  if (rail.contains(e.target) || menuBtn.contains(e.target)) return;
+  /* 备份 / 更多 / 导入菜单为 fixed 定位、挂在 body 上而非抽屉内，点按其中项不应收起抽屉 */
+  if (e.target.closest && e.target.closest('#backupMenu, #moreMenu, #importMenu')) return;
+  closeRail();
 });
 /* 标题展示态（省略号）/ 编辑态切换 */
 titleInput.addEventListener('focus', function(){ titleBox.classList.add('editing'); });
@@ -1462,9 +1566,9 @@ function renderMain(){
     renderSentences(a);
     updateMeta();
   }
-  /* 切换文章或视图时回到顶部：避免沿用上一篇的滚动位置把标题与操作按钮顶出屏幕 */
+  /* 触屏端切换文章或视图时回到顶部：避免沿用上一篇的滚动位置把标题与操作按钮顶出屏幕 */
   var viewKey = a.id + '|' + (prac.hidden ? 'setup' : 'prac');
-  if (viewKey !== lastViewKey){
+  if (IS_COARSE && viewKey !== lastViewKey){
     lastViewKey = viewKey;
     var scroller = $('#main');
     if (scroller) scroller.scrollTop = 0;
@@ -1518,14 +1622,12 @@ function renderSentences(a){
     var tools = document.createElement('div');
     tools.className = 'tools';
     tools.innerHTML =
-      '<button class="tbtn-copy" data-act="copy">' +
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>复制本句' +
-      '</button>' +
-      '<button class="tbtn" data-act="gap" title="在光标处插入缺词标记">缺词标记</button>' +
-      '<button class="tbtn" data-act="save" title="将本句当前内容存入某一档">保存本句</button>' +
-      '<button class="tbtn touchonly" data-act="dictsel" title="查询当前选中文字">查词典</button>' +
-      '<button class="tbtn touchonly" data-act="marksel" title="标红或取消标红当前选中文字">标红</button>' +
-      '<button class="tbtn touchonly" data-act="markerrsel" title="记录语法错误类型（划线标记）">记错</button>';
+      '<button class="tbtn-copy" data-act="copy" title="复制本句英文" aria-label="复制本句">' + ICON_COPY + '<span class="btn-txt">复制本句</span></button>' +
+      '<button class="tbtn" data-act="gap" title="在光标处插入缺词标记">' + ICON_GAP + '<span class="btn-txt">缺词标记</span></button>' +
+      '<button class="tbtn" data-act="save" title="将本句当前内容存入某一档">' + ICON_SAVE + '<span class="btn-txt">保存本句</span></button>' +
+      '<button class="tbtn touchonly" data-act="dictsel" title="查询当前选中文字">' + ICON_DICT + '<span class="btn-txt">查词典</span></button>' +
+      '<button class="tbtn touchonly" data-act="marksel" title="标红或取消标红当前选中文字">' + ICON_MARK + '<span class="btn-txt">标红</span></button>' +
+      '<button class="tbtn touchonly" data-act="markerrsel" title="记录语法错误类型（划线标记）">' + ICON_ERR + '<span class="btn-txt">记错</span></button>';
     function runTool(action, btn){
       if (action === 'copy'){
         copyText(plainOf(en.innerHTML), '本句英文已复制', function(){ flashButton(btn, '复制成功'); });
@@ -2035,7 +2137,10 @@ errMenuEl.addEventListener('click', function(ev){
   if (cb && errTypeValid(type)) cb(type);
 });
 document.addEventListener('mousedown', function(e){
-  if (errMenuEl.style.display === 'flex' && !errMenuEl.contains(e.target)) closeErrMenu();
+  if (errMenuEl.style.display !== 'flex') return;
+  if (errMenuEl.contains(e.target)) return;
+  if (e.target.closest && e.target.closest('[data-act="markerrsel"], #chipMarkErr')) return;
+  closeErrMenu();
 });
 
 /* 判断选区是否严格穿过缺词标记（边界相接不算） */
@@ -2350,6 +2455,9 @@ function copyText(text, msg, onOk){
 var dictChip = $('#dictChip'), dictPanel = $('#dictPanel');
 var chipDictBtn = $('#chipDict'), chipMarkBtn = $('#chipMark'), chipMarkErrBtn = $('#chipMarkErr');
 var chipDictTxt = $('#chipDictTxt');
+/* 浮标中的标红 / 记错补图标（与查词典一致）；图标插在文字层之前 */
+chipMarkBtn.insertAdjacentHTML('afterbegin', ICON_MARK);
+chipMarkErrBtn.insertAdjacentHTML('afterbegin', ICON_ERR);
 var currentDictWord = '';
 var dictAnchor = null;
 var dictGuardUntil = 0; /* 词典面板保护期：面板刚打开或程序化平滑滚动期间，不因 scroll/resize 立即关闭 */
@@ -2357,9 +2465,19 @@ var chipCtx = null; /* 浮标上下文：{ kind:'zh'|'en', text, editor, range }
 var chipSnapshot = null; /* 触屏点击浮标时系统可能先清空选区，保留最近一次上下文快照 */
 var touchSelSnap = null; /* 触屏最近一次有效选区快照，供句内按钮点击时选区被清空后回退 */
 var IS_COARSE = !!(window.matchMedia && window.matchMedia('(any-pointer: coarse)').matches);
+/* 手机竖屏触控：与样式表中同名媒体查询保持同一判定，供脚本侧（如按钮反馈形态）使用 */
+var PHONE_MQ = (window.matchMedia && window.matchMedia('(max-width:880px) and (orientation:portrait) and (any-pointer:coarse)')) || null;
+function isPhoneView(){ return !!(PHONE_MQ && PHONE_MQ.matches); }
 if (IS_COARSE) document.body.classList.add('touch');
 
 /* 触屏端：按当前选区显隐各句工具栏中的 查词典/标红 按钮（仅选中文字的句子显示） */
+/* 按钮文字改写：只替换文字层，保留图标 */
+function setBtnLabel(btn, text){
+  if (!btn) return;
+  var slot = btn.querySelector('.btn-txt');
+  if (slot) slot.textContent = text;
+  else btn.textContent = text;
+}
 function updateTouchToolbars(){
   var sel = window.getSelection();
   var node = (sel && sel.rangeCount && !sel.isCollapsed) ? sel.getRangeAt(0).commonAncestorContainer : null;
@@ -2372,12 +2490,12 @@ function updateTouchToolbars(){
     inZh = !!zhEl;
     inEn = !!(enEl && enEl.isContentEditable && !selectionIntersectsGap(enEl, sel.getRangeAt(0)));
     var db = card.querySelector('.tbtn[data-act="dictsel"]');
-    if (db) db.textContent = inZh ? '翻译' : '查词典';
+    if (db) setBtnLabel(db, inZh ? '翻译' : '查词典');
     /* 记错按钮括注已记录的错误类型（选区已完整记错且类型统一时） */
     var eb = card.querySelector('.tbtn[data-act="markerrsel"]');
     if (eb){
       var et = (inEn && enEl) ? errmarkTypeInRange(enEl, sel.getRangeAt(0)) : null;
-      eb.textContent = et ? ('取消记错（' + errTypeLabel(et) + '）') : '记错';
+      setBtnLabel(eb, et ? ('取消记错（' + errTypeLabel(et) + '）') : '记错');
     }
   }
   var cards = document.querySelectorAll('#sentenceList .sent');
@@ -2495,10 +2613,10 @@ document.addEventListener('pointerup', function(e){
 function showChip(rect, opts){
   chipDictBtn.hidden = !opts.dict;
   chipMarkBtn.hidden = (opts.marked === undefined);
-  if (!chipMarkBtn.hidden) chipMarkBtn.textContent = opts.marked ? '取消标红' : '标红';
+  if (!chipMarkBtn.hidden) setBtnLabel(chipMarkBtn, opts.marked ? '取消标红' : '标红');
   chipMarkErrBtn.hidden = !opts.markerr;
   /* 记错按钮括注已记录的错误类型（选区已完整记错且类型统一时） */
-  if (!chipMarkErrBtn.hidden) chipMarkErrBtn.textContent = opts.errtype ? ('取消记错（' + errTypeLabel(opts.errtype) + '）') : '记错';
+  if (!chipMarkErrBtn.hidden) setBtnLabel(chipMarkErrBtn, opts.errtype ? ('取消记错（' + errTypeLabel(opts.errtype) + '）') : '记错');
   animOpen(dictChip);
   var w = dictChip.offsetWidth || 84;
   var h = dictChip.offsetHeight || 34;
@@ -4273,11 +4391,12 @@ moreMenuEl.addEventListener('click', function(ev){
   if (!b) return;
   closeFootMenus();
   var act = b.getAttribute('data-more');
-  if (act === 'stats'){ openStats(); return; }
+  /* 打开弹层的项需自行收起抽屉；多选要留在抽屉内勾选文章，故不收起 */
+  if (act === 'stats'){ closeRail(); openStats(); return; }
   if (act === 'pick'){ enterPickMode(); toast('多选文章'); return; }
-  if (act === 'recycle'){ openRecycle(); return; }
-  if (act === 'autosave'){ openAutosave(); return; }
-  if (act === 'about'){ openOverlay($('#aboutOverlay')); return; }
+  if (act === 'recycle'){ closeRail(); openRecycle(); return; }
+  if (act === 'autosave'){ closeRail(); openAutosave(); return; }
+  if (act === 'about'){ closeRail(); openOverlay($('#aboutOverlay')); return; }
 });
 window.addEventListener('resize', closeFootMenus);
 importMenuEl.addEventListener('click', function(ev){
