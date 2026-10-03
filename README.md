@@ -13,7 +13,7 @@
 
 以“单句拆分，专注输出”为设计原则，从单句开始写作。
 
-只需粘贴一段中文原文，程序会自动将其拆分为单句，以逐句进行英文翻译写作练习。遇到生词随时调用内置词典，最终将写好的句子一键复制交给 AI 进行批改优化，理解后回到本程序优化重写、记录错误。
+只需粘贴一段中文原文，程序会自动将其拆分为单句，以逐句进行英文翻译写作练习。遇到生词随时调用内置词典，最终将写好的句子复制交给 AI 进行批改优化，完成学习理解后重写，记录错误并保留不同版本以供复盘。
 
 <img width="2738" height="1441" alt="image" src="https://github.com/user-attachments/assets/ad1c6888-5e70-46b9-93d4-1b0047d94452" />
 
@@ -23,7 +23,8 @@
 - [在 GitHub Pages 中在线使用](https://liumashiro.github.io/JuYi-ZH-EN-Sentence-Practice/JuYi.html)
   - 或者，下载 .html 文件，双击打开即可运行
 - 输入中文段落，拆句，翻译
-- 将逐句翻译结果或整篇翻译结果复制，交由 AI 进行批改优化，理解后回到本程序重写并记录错误。
+- 将逐句翻译结果或整篇翻译结果复制，交由 AI 进行批改优化，完成学习理解后重写，记录错误
+- 保留不同版本以供复盘
 - 进阶（可选）使用Chrome app式窗口打开（独立窗口而非标签页，UI更清爽，使用更方便）：
   - 在桌面右键添加快捷方式，输入`"C:\Program Files\Google\Chrome\Application\chrome.exe" --app=file:///{html位置}` ，如`"C:\Program Files\Google\Chrome\Application\chrome.exe" --app=file:///C:/Users/{Username}/Documents/JuYi.html`
 
