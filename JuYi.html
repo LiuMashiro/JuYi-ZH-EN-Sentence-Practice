@@ -29,7 +29,8 @@
 }
 /* 触屏：禁用双击缩放但保留滚动与双击选词 */
 *{margin:0;padding:0;box-sizing:border-box;touch-action:manipulation;}
-html,body{height:100%;}
+/* 移动端 100vh 大于实际可视高度，会使整页产生可弹动的溢出并遮住顶部或底部：统一改用 dvh 并锁死文档级滚动 */
+html,body{height:100%;height:100dvh;overflow:hidden;}
 body{
   font-family:var(--sans);
   background:var(--bg);
@@ -49,7 +50,7 @@ button{font-family:inherit;cursor:pointer;}
 
 /* ================= 左侧文章栏 ================= */
 #rail{
-  width:272px;flex:none;height:100vh;overflow:hidden;
+  width:272px;flex:none;height:100vh;height:100dvh;overflow:hidden;
   display:flex;flex-direction:column;
   border-right:1px solid var(--line);
   background:var(--surface);
@@ -107,7 +108,7 @@ button{font-family:inherit;cursor:pointer;}
 .rail-foot button:hover{border-color:var(--ink);color:var(--ink);}
 
 /* ================= 主区域 ================= */
-#main{flex:1;overflow-y:auto;height:100vh;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
+#main{flex:1;overflow-y:auto;height:100vh;height:100dvh;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
 .wrap{max-width:800px;margin:0 auto;padding:0 44px 90px;}
 
 /* ---- 原文录入 ---- */
@@ -189,6 +190,8 @@ button{font-family:inherit;cursor:pointer;}
 .en.empty::before{
   content:attr(data-ph);color:#b9b9bd;font-style:italic;pointer-events:none;
   position:absolute;left:var(--en-pad-x);top:var(--en-pad-y);right:var(--en-pad-x);
+  /* 窄屏下单行显示并以省略号截断，避免折行撑高输入框 */
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .mark{
   color:var(--err);background:var(--err-bg);
@@ -221,9 +224,9 @@ button{font-family:inherit;cursor:pointer;}
 }
 .tbtn:hover{color:var(--err);background:var(--err-bg);}
 /* 句子右下角：初/二/终稿状态圆点 */
-.slot-dots{position:absolute;right:12px;bottom:6px;display:flex;}
-.sdot{border:none;background:none;padding:1.5px;line-height:0;border-radius:50%;transition:.14s;cursor:default;}
-.sdot i{display:block;width:6px;height:6px;border-radius:50%;background:var(--surface);border:1px solid var(--line-2);transition:.14s;}
+.slot-dots{position:absolute;right:11px;bottom:7px;display:flex;gap:2px;}
+.sdot{border:none;background:none;padding:2.5px;line-height:0;border-radius:50%;transition:.14s;cursor:default;}
+.sdot i{display:block;width:9px;height:9px;border-radius:50%;background:var(--surface);border:1px solid var(--line-2);transition:.14s;}
 .sdot.on{cursor:pointer;}
 .sdot.on i{background:#bcbcc4;border-color:transparent;}
 .sdot.on:hover i{transform:scale(1.25);}
@@ -547,14 +550,25 @@ button{font-family:inherit;cursor:pointer;}
 
 /* ================= 窄窗口：侧栏抽屉 ================= */
 @media (max-width:880px){
-  #menuBtn{display:flex;}
+  /* 菜单键悬浮于内容之上（与撤回键同理），内容不再为其预留左侧竖条 */
+  #menuBtn{display:flex;left:12px;top:12px;}
   #rail{
     position:fixed;left:0;top:0;bottom:0;z-index:70;
+    /* 抽屉高度交给 top/bottom 决定：旧浏览器不支持 dvh 时不会因 100vh 把底部按钮挤出屏幕 */
+    height:auto;
     transform:translateX(-102%);
     box-shadow:var(--shadow-lg);
   }
   #rail.open{transform:none;}
-  .wrap{padding-left:68px;padding-right:24px;}
+  /* 横向空间全留给内容，顶部仅让出悬浮键的高度 */
+  .wrap{padding-left:20px;padding-right:20px;}
+  #workHead{padding-top:68px;}
+  #setupView{padding-top:68px;}
+  /* 句卡改为单列：句子编号独占一行，不再占用横向空间 */
+  .sent{grid-template-columns:1fr;gap:8px;padding:18px 16px 20px;}
+  .sent-no{padding-top:0;}
+  /* 档位圆点放大后，句内工具栏右侧多留出余量，避免最右按钮被圆点压住 */
+  .tools{padding-right:60px;}
 }
 
 /* ================= 触屏优化（iPad / 平板） ================= */
@@ -575,13 +589,13 @@ button{font-family:inherit;cursor:pointer;}
   #menuBtn{width:44px;height:44px;}
   .rail-foot button{padding:11px 0;}
   #railCollapseBtn{padding:9px;}
-  .sdot{padding:3px;}
-  .tools{padding-right:60px;}
+  .sdot{padding:4px;}
+  .tools{padding-right:72px;}
 }
 
 /* ================= 触屏专用界面：撤回重做栏与句内固定按钮 ================= */
 /* 触屏端不弹选中浮标（避让系统选中菜单），查词典/标红固定在句内工具栏 */
-#undoBar{position:fixed;right:14px;top:14px;z-index:68;display:none;gap:8px;}
+#undoBar{position:fixed;right:12px;top:12px;z-index:68;display:none;gap:8px;}
 body.touch #undoBar.show{display:flex;}
 #undoBar button{
   width:44px;height:44px;border-radius:12px;border:1px solid var(--line-2);
@@ -669,7 +683,7 @@ body.touch .sent.sel-zh .tbtn[data-act="dictsel"]{display:inline-block;}
       <button id="cancelEditBtn" class="btn" hidden>取消编辑</button>
       <button id="startBtn" class="btn primary">开始练习</button>
     </div>
-    <p class="attribution"><br>1.2.0 · 使用翻译 / 查词典功能时，可能调用 <a href="https://mymemory.translated.net/" target="_blank" rel="noopener">MyMemory 机器翻译</a>、<a href="https://freedictionaryapi.com/" target="_blank" rel="noopener">Free Dictionary API</a>（源自 <a href="https://en.wiktionary.org/" target="_blank" rel="noopener">维基词典</a>）提供查词服务。</p>
+    <p class="attribution"><br>1.2.1 · 使用翻译 / 查词典功能时，可能调用 <a href="https://mymemory.translated.net/" target="_blank" rel="noopener">MyMemory 机器翻译</a>、<a href="https://freedictionaryapi.com/" target="_blank" rel="noopener">Free Dictionary API</a>（源自 <a href="https://en.wiktionary.org/" target="_blank" rel="noopener">维基词典</a>）提供查词服务。</p>
   </section>
 
   <!-- 练习视图 -->
@@ -927,7 +941,7 @@ body.touch .sent.sel-zh .tbtn[data-act="dictsel"]{display:inline-block;}
         <a href="https://github.com/LiuMashiro/JuYi-ZH-EN-Sentence-Practice" target="_blank" rel="noopener">[GitHub]</a>
         <a href="https://liumashiro.github.io/JuYi-ZH-EN-Sentence-Practice/JuYi.html" target="_blank" rel="noopener">[在线使用]</a>
       </div>
-      <p class="about-ver">1.2.0 · 使用翻译 / 查词典功能时，可能调用 <a href="https://mymemory.translated.net/" target="_blank" rel="noopener">MyMemory 机器翻译</a>、<a href="https://freedictionaryapi.com/" target="_blank" rel="noopener">Free Dictionary API</a>（源自 <a href="https://en.wiktionary.org/" target="_blank" rel="noopener">维基词典</a>）提供查词服务。</p>
+      <p class="about-ver">1.2.1 · 使用翻译 / 查词典功能时，可能调用 <a href="https://mymemory.translated.net/" target="_blank" rel="noopener">MyMemory 机器翻译</a>、<a href="https://freedictionaryapi.com/" target="_blank" rel="noopener">Free Dictionary API</a>（源自 <a href="https://en.wiktionary.org/" target="_blank" rel="noopener">维基词典</a>）提供查词服务。</p>
     </div>
   </div>
 </div>
@@ -1424,6 +1438,7 @@ function renderRail(){
 /* ---------------- 主视图渲染 ---------------- */
 var editingSource = false;
 var editBackup = null; /* 进入编辑原文前的原文快照，供取消编辑还原 */
+var lastViewKey = null; /* 当前渲染的「文章 + 视图」标识，用于判断是否需要回到顶部 */
 function renderMain(){
   var a = cur();
   if (!a) return;
@@ -1446,6 +1461,13 @@ function renderMain(){
     titleBox.classList.toggle('editing', document.activeElement === titleInput);
     renderSentences(a);
     updateMeta();
+  }
+  /* 切换文章或视图时回到顶部：避免沿用上一篇的滚动位置把标题与操作按钮顶出屏幕 */
+  var viewKey = a.id + '|' + (prac.hidden ? 'setup' : 'prac');
+  if (viewKey !== lastViewKey){
+    lastViewKey = viewKey;
+    var scroller = $('#main');
+    if (scroller) scroller.scrollTop = 0;
   }
   /* 触屏端仅在练习视图显示固定撤回重做栏 */
   $('#undoBar').classList.toggle('show', IS_COARSE && !!a.sentences && !editingSource);
@@ -4113,13 +4135,20 @@ $('#startBtn').addEventListener('click', function(){
 });
 
 /* ---------------- 编辑原文 ---------------- */
+/* 触屏端不自动聚焦录入框：软键盘弹出会把顶部内容顶出屏幕，改由用户点按后再聚焦 */
+function focusSourceText(){
+  if (IS_COARSE) return;
+  var ta = $('#sourceText');
+  if (!ta) return;
+  try { ta.focus({ preventScroll: true }); } catch(e){ ta.focus(); }
+}
 $('#editSourceBtn').addEventListener('click', function(){
   var a = cur();
   autoSnapshot(); /* 编辑原文前先整篇保存，可随时回退 */
   editBackup = a ? (a.sourceText || '') : '';
   editingSource = true;
   renderMain();
-  $('#sourceText').focus();
+  focusSourceText();
 });
 /* 取消编辑：还原进入编辑前的原文并返回练习 */
 $('#cancelEditBtn').addEventListener('click', function(){
@@ -4156,7 +4185,7 @@ $('#newArticleBtn').addEventListener('click', function(){
         state.currentId = e.id;
         editingSource = false;
         persistNow(); renderRail(); renderMain();
-        $('#sourceText').focus();
+        focusSourceText();
       }
       return;
     }
@@ -4166,7 +4195,7 @@ $('#newArticleBtn').addEventListener('click', function(){
   state.currentId = a.id;
   editingSource = false;
   persistNow(); renderRail(); renderMain();
-  $('#sourceText').focus();
+  focusSourceText();
 });
 
 /* ---------------- 导出 / 导入备份 ---------------- */
